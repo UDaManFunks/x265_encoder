@@ -1,2 +1,5 @@
 # x264_encoder
-Slightly Modified x264_encoder for Davinci Resolve (based on Black Magic's x264_encoder_plugin sample)
+
+x265_encoder for Davinci Resolve Studio (based on Black Magic's x264_encoder_plugin sample)
+
+Note: currently does not work.
