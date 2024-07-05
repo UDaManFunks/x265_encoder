@@ -498,9 +498,10 @@ void X265Encoder::SetupContext(bool p_IsFinalPass)
 	}
 
 	if (m_pContext) {
-		g_Log(logLevelInfo, "X265 Plugin :: SetupContext :: cleaning m_pContext, m_pParam");
+		g_Log(logLevelInfo, "X265 Plugin :: SetupContext :: cleaning m_pContext, m_pParam, and env");
 		x265_encoder_close(m_pContext);
 		x265_param_free(m_pParam);
+		x265_cleanup();
 		m_pContext = 0;
 		m_pParam = 0;
 	}
