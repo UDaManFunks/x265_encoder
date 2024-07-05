@@ -470,7 +470,7 @@ void X265Encoder::DoFlush()
 
 StatusCode X265Encoder::DoInit(HostPropertyCollectionRef* p_pProps)
 {
-	g_Log(logLevelInfo, "X265 Plugin :: DoInit");
+	g_Log(logLevelInfo, "X265 Plugin :: DoInit ::");
 
 	uint32_t vColorModel = clrUYVY;
 	p_pProps->SetProperty(pIOPropColorModel, propTypeUInt32, &vColorModel, 1);
@@ -498,7 +498,6 @@ void X265Encoder::SetupContext(bool p_IsFinalPass)
 	}
 
 	if (m_pContext) {
-		g_Log(logLevelInfo, "X265 Plugin :: SetupContext :: cleaning m_pContext, m_pParam, and env");
 		x265_encoder_close(m_pContext);
 		x265_param_free(m_pParam);
 		x265_cleanup();
@@ -560,17 +559,6 @@ void X265Encoder::SetupContext(bool p_IsFinalPass)
 	m_pContext = x265_encoder_open(m_pParam);
 
 	m_Error = ((m_pContext != NULL) ? errNone : errFail);
-
-	{
-		// debug only, to DELETE
-
-		logMessage.str("");
-		logMessage.clear();
-		logMessage << logMessagePrefix << " m_pContext = " << m_pContext << " :: m_Error = " << m_Error;
-		g_Log(logLevelInfo, logMessage.str().c_str());
-
-	}
-
 
 }
 
@@ -640,15 +628,12 @@ StatusCode X265Encoder::DoOpen(HostBufferRef* p_pBuff)
 	if (hdrBytes > 0) {
 
 		{
+			// debug only, to DELETE
+
 			logMessage.str("");
 			logMessage.clear();
 			logMessage << logMessagePrefix;
-			logMessage << " hdrBytes = " << hdrBytes;
-
-			g_Log(logLevelInfo, logMessage.str().c_str());
-
-			logMessage << " :: numNals = ";
-			logMessage << numNals;
+			logMessage << " hdrBytes = " << hdrBytes << " ::numNals = " << numNals;
 
 			g_Log(logLevelInfo, logMessage.str().c_str());
 		}
@@ -724,13 +709,13 @@ std::string X265Encoder::ConvertUINT8ToHexStr(const uint8_t* v, const size_t s) 
 
 StatusCode X265Encoder::DoProcess(HostBufferRef* p_pBuff)
 {
-	std::string logMessagePrefix = "X265 Plugin :: DoOpen :: ";
+	std::string logMessagePrefix = "X265 Plugin :: DoProcess :: ";
 	std::ostringstream logMessage;
 
 	{
 		// debug only, to DELETE
 
-		logMessage << logMessagePrefix << " :: p_pBuff = " << p_pBuff << " :: m_Error = " << m_Error << " :: m_ColorModel = " << m_ColorModel;
+		logMessage << logMessagePrefix << " p_pBuff = " << p_pBuff << " :: m_Error = " << m_Error << " :: m_ColorModel = " << m_ColorModel;
 		g_Log(logLevelInfo, logMessage.str().c_str());
 	}
 
@@ -738,18 +723,16 @@ StatusCode X265Encoder::DoProcess(HostBufferRef* p_pBuff)
 		return m_Error;
 	}
 
-	/*
+	/*  there is no function in x265 that retrieves the number of delayed frames
+
 	const int numDelayedFrames = x265_encoder_delayed_frames(m_pContext);
-	if (((p_pBuff == NULL) || !p_pBuff->IsValid()) && (numDelayedFrames == 0))
-	{
+	if (((p_pBuff == NULL) || !p_pBuff->IsValid()) && (numDelayedFrames == 0)) {
 		return errMoreData;
 	}
 
-	*/
+	 */
 
 	x265_picture outPic;
-
-	g_Log(logLevelInfo, "X265 Plugin :: DoProcess :: x265_picture_init (outPic)");
 	x265_picture_init(m_pParam, &outPic);
 
 	x265_nal* pNals = 0;
@@ -758,18 +741,12 @@ StatusCode X265Encoder::DoProcess(HostBufferRef* p_pBuff)
 	int encoderRet = 0;
 	int64_t pts = -1;
 
-	if (!p_pBuff->IsValid()) {
-		g_Log(logLevelInfo, "X265 Plugin :: DoProcess :: p_pBuff is NOT VALID");
-	}
-
 	if (p_pBuff == NULL || !p_pBuff->IsValid()) {
 
-		g_Log(logLevelInfo, "X265 Plugin :: DoProcess :: flushing?");
+		g_Log(logLevelInfo, "X265 Plugin :: DoProcess :: trying to flush");
 		encoderRet = x265_encoder_encode(m_pContext, &pNals, &numNals, 0, &outPic);
 
 	} else {
-
-		g_Log(logLevelInfo, "X265 Plugin :: DoProcess :: trying");
 
 		char* pBuf = NULL;
 		size_t bufSize = 0;
@@ -797,11 +774,7 @@ StatusCode X265Encoder::DoProcess(HostBufferRef* p_pBuff)
 			return errNoParam;
 		}
 
-		g_Log(logLevelInfo, "X265 Plugin :: DoProcess :: inPic");
-
 		x265_picture inPic;
-
-		g_Log(logLevelInfo, "X265 Plugin :: DoProcess :: x265_picture_init (inPic)");
 		x265_picture_init(m_pParam, &inPic);
 
 		// UYVY > I420
@@ -849,15 +822,24 @@ StatusCode X265Encoder::DoProcess(HostBufferRef* p_pBuff)
 
 			logMessage.str("");
 			logMessage.clear();
-			logMessage << logMessagePrefix << " encoderRet = " << encoderRet << " :: bytes = " << bytes << " :: ySize = " << yPlane.size() << " :: uSize = " << uPlane.size() << " :: vSize = " << vPlane.size();
+			logMessage << logMessagePrefix << " ySize = " << yPlane.size() << " :: uSize = " << uPlane.size() << " :: vSize = " << vPlane.size();
 			g_Log(logLevelInfo, logMessage.str().c_str());
 
 		}
 
 		p_pBuff->UnlockBuffer();
 
+		g_Log(logLevelInfo, "X265 Plugin :: DoProcess :: encoded a frame");
 
-		g_Log(logLevelInfo, "X265 Plugin :: DoOpen :: encoded a frame");
+	}
+
+	{
+		// debug only, to DELETE
+
+		logMessage.str("");
+		logMessage.clear();
+		logMessage << logMessagePrefix << " encoderRet = " << encoderRet;
+		g_Log(logLevelInfo, logMessage.str().c_str());
 
 	}
 
