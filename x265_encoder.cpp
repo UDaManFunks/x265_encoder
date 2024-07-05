@@ -181,6 +181,9 @@ private:
 			valuesVec.push_back(0);
 			textsVec.push_back("main");
 
+			// valuesVec.push_back(1);
+			// textsVec.push_back("main10");
+
 			item.MakeComboBox("Encoder Profile", textsVec, valuesVec, m_Profile);
 			if (!item.IsSuccess() || !p_pSettingsList->Append(&item)) {
 				g_Log(logLevelError, "X265 Plugin :: Failed to populate profile UI entry");
@@ -317,6 +320,11 @@ public:
 		return m_BitRate;
 	}
 
+	int32_t GetBitDepth() const
+	{
+		return m_Profile == 0 ? 8 : 10;
+	}
+
 	const std::string& GetMarkerColor() const
 	{
 		return m_MarkerColor;
@@ -386,6 +394,8 @@ StatusCode X265Encoder::s_RegisterCodecs(HostListRef* p_pList)
 
 	uint32_t vBitDepth = 8;
 	codecInfo.SetProperty(pIOPropBitDepth, propTypeUInt32, &vBitDepth, 1);
+
+	vBitDepth = 8;
 	codecInfo.SetProperty(pIOPropBitsPerSample, propTypeUInt32, &vBitDepth, 1);
 
 	const uint32_t temp = 0;
@@ -509,7 +519,7 @@ void X265Encoder::SetupContext(bool p_IsFinalPass)
 	m_pParam->internalCsp = m_ColorModel;
 	m_pParam->sourceWidth = m_CommonProps.GetWidth();
 	m_pParam->sourceHeight = m_CommonProps.GetHeight();
-	m_pParam->sourceBitDepth = 8;
+	m_pParam->sourceBitDepth = m_pSettings->GetBitDepth();
 	m_pParam->fpsNum = m_CommonProps.GetFrameRateNum();
 	m_pParam->fpsDenom = m_CommonProps.GetFrameRateDen();
 	m_pParam->vui.bEnableVideoFullRangeFlag = m_CommonProps.IsFullRange();
@@ -596,6 +606,20 @@ StatusCode X265Encoder::DoOpen(HostBufferRef* p_pBuff)
 	if (m_pSettings->GetNumPasses() == 2) {
 		m_IsMultiPass = true;
 		isMultiPass = 1;
+	}
+
+	uint8_t vBitDepth = m_pSettings->GetBitDepth();
+	p_pBuff->SetProperty(pIOPropBitDepth, propTypeUInt32, &vBitDepth, 1);
+	vBitDepth = m_pSettings->GetBitDepth();
+	p_pBuff->SetProperty(pIOPropBitsPerSample, propTypeUInt32, &vBitDepth, 1);
+
+	{
+		// debug only, to DELETE
+
+		logMessage.str("");
+		logMessage.clear();
+		logMessage << logMessagePrefix << " bitDepth = " << m_pSettings->GetBitDepth();
+		g_Log(logLevelInfo, logMessage.str().c_str());
 	}
 
 	StatusCode sts = p_pBuff->SetProperty(pIOPropMultiPass, propTypeUInt8, &isMultiPass, 1);
