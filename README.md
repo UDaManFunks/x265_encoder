@@ -28,6 +28,7 @@ Create Directory C:\VideoEditingUtils\x265_plugin_build
 1) MODIFY the file "C:\VideoEditingUtils\x265_plugin_build\x265\build\msys-cl\make-Makefiles-64bit.bat"
 
 > in line number 5, change "target_processor='amd64'" to "target_processor='x64'"
+
 > in line 24, append the following defintions -DEXPORT_C_API=ON -DENABLE_SHARED=OFF -DENABLE_CLI=OFF -DSTATIC_LINK_CRT=ON 
 
 Note: make sure there's a white space between these defintions and ../source
