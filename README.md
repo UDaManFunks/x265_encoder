@@ -42,7 +42,7 @@ Note: make sure there's a white space between these defintions and ../source
 4) Execute the command "msys2_shell.cmd -mingw64 -full-path"
 5) This will open up another terminal, type in the following commands (in the new terminal)
 6) cd /C/VideoEditingUtils/x265_plugin_build/x265/build/msys-cl
-7) "./make-Makefiles-64-bit.sh"
+7) "./make-Makefiles-64bit.sh"
 
 [Download x265_encoder]
 
