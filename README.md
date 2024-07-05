@@ -1,3 +1,5 @@
+x265_encoder for Davinci Resolve Studio (based on Black Magic's x264_encoder_plugin sample)
+
 [WINDOWS]
 
 To compile this under WINDOWS, you'll need the following tools installed
@@ -23,7 +25,7 @@ Create Directory C:\VideoEditingUtils\x265_plugin_build
 8) cd /C/VideoEditingUtils/x265_plugin_build   
 90) git clone https://github.com/videolan/x265
 
-[Compile x264]
+[Compile x265]
 
 1) MODIFY the file "C:\VideoEditingUtils\x265_plugin_build\x265\build\msys-cl\make-Makefiles-64bit.bat"
 
