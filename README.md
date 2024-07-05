@@ -48,7 +48,7 @@ Note: make sure there's a white space between these defintions and ../source
 2) cd /C/VideoEditingUtils/x265_plugin_build
 3) git clone https://github.com/UDaManFunks/x265_encoder
 
-[Compile x254_encoder]
+[Compile x265_encoder]
 
 1) run the "x64 Native Tools Command Prompt for VS 2022" - type it in the seach bar in the Windows Task Bar
 2) Inside the command prompt, type "cd /d C:\VideoEditingUtils\x265_plugin_build\x265_encoder"
