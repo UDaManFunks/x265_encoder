@@ -95,7 +95,7 @@ private:
 		m_Profile = 0;
 		m_NumPasses = 1;
 		m_QualityMode = X265_RC_CRF;
-		m_QP = 22;
+		m_QP = 25;
 		m_BitRate = 0;
 	}
 
@@ -361,7 +361,7 @@ StatusCode X265Encoder::s_RegisterCodecs(HostListRef* p_pList)
 	const char* pCodecGroup = "X265 (8-bit)";
 	codecInfo.SetProperty(pIOPropGroup, propTypeString, pCodecGroup, strlen(pCodecGroup));
 
-	uint32_t vFourCC = 'avc1';
+	uint32_t vFourCC = 'hvc1';
 	codecInfo.SetProperty(pIOPropFourCC, propTypeUInt32, &vFourCC, 1);
 
 	uint32_t vMediaVideo = mediaVideo;
@@ -370,10 +370,8 @@ StatusCode X265Encoder::s_RegisterCodecs(HostListRef* p_pList)
 	uint32_t vDirection = dirEncode;
 	codecInfo.SetProperty(pIOPropCodecDirection, propTypeUInt32, &vDirection, 1);
 
-	uint32_t vColorModel = clrYUVp;
+	uint32_t vColorModel = clrUYVY;
 	codecInfo.SetProperty(pIOPropColorModel, propTypeUInt32, &vColorModel, 1);
-
-	// TODO - what corresponds to 4:2:0?  I'm pretty sure this one is 4:2:2
 
 	uint8_t hSampling = 2;
 	uint8_t vSampling = 1;
@@ -464,15 +462,14 @@ StatusCode X265Encoder::DoInit(HostPropertyCollectionRef* p_pProps)
 {
 	g_Log(logLevelInfo, "X265 Plugin :: DoInit");
 
-	uint32_t vColorModel = clrYUVp;
+	uint32_t vColorModel = clrUYVY;
 	p_pProps->SetProperty(pIOPropColorModel, propTypeUInt32, &vColorModel, 1);
-
-	// TODO - what corresponds to 4:2:0?  I'm pretty sure this one is 4:2:2
 
 	uint8_t hSampling = 2;
 	uint8_t vSampling = 1;
 	p_pProps->SetProperty(pIOPropHSubsampling, propTypeUInt8, &hSampling, 1);
 	p_pProps->SetProperty(pIOPropVSubsampling, propTypeUInt8, &vSampling, 1);
+
 
 	return errNone;
 }
@@ -515,22 +512,7 @@ void X265Encoder::SetupContext(bool p_IsFinalPass)
 	m_pParam->sourceBitDepth = 8;
 	m_pParam->fpsNum = m_CommonProps.GetFrameRateNum();
 	m_pParam->fpsDenom = m_CommonProps.GetFrameRateDen();
-
-
-	/*
-	m_pParam->bframes = 2;
-	m_pParam->bFrameAdaptive = X265_B_ADAPT_NONE;
-	m_pParam->bBPyramid = true;
-	m_pParam->bOpenGOP = true;
-	m_pParam->keyframeMax = 250;
-	m_pParam->bRepeatHeaders = 0;
-	m_pParam->bAnnexB = 0;
-	*/
-
-
-	// param->b_stitchable = 1;
-	// param.vui.b_fullrange = m_CommonProps.IsFullRange();
-
+	m_pParam->vui.bEnableVideoFullRangeFlag = m_CommonProps.IsFullRange();
 	m_pParam->rc.rateControlMode = m_pSettings->GetQualityMode();
 
 	if (!m_IsMultiPass && (m_pParam->rc.rateControlMode != X265_RC_ABR)) {
@@ -656,36 +638,10 @@ StatusCode X265Encoder::DoOpen(HostBufferRef* p_pBuff)
 
 		for (int i = 0; i < numNals; i++) {
 
-			{
-				logMessage.str("");
-				logMessage.clear();
-				logMessage << logMessagePrefix;
-				logMessage << " i = " << i << " :: type = " << pNals[i].type;
-				g_Log(logLevelInfo, logMessage.str().c_str());
-			}
-
 			if (pNals[i].type == NAL_UNIT_PREFIX_SEI) {
 				g_Log(logLevelInfo, "X265 Plugin :: DoOpen :: continue");
 				continue;
 			}
-
-			{
-				// debug only, to DELETE
-
-				logMessage.str("");
-				logMessage.clear();
-				logMessage << logMessagePrefix << " payload size = " << pNals[i].sizeBytes;
-				g_Log(logLevelInfo, logMessage.str().c_str());
-
-				for (int j = 0; j < pNals[i].sizeBytes; j++) {
-					logMessage.str("");
-					logMessage.clear();
-					logMessage << logMessagePrefix << " original payload :: val = " << ConvertUINT8ToHexStr(&pNals[i].payload[j], 1);
-					g_Log(logLevelInfo, logMessage.str().c_str());
-				}
-			}
-
-			// not sure why we are overwiting the the first 4 bytes of the payload
 
 			pNals[i].payload[0] = 0;
 			pNals[i].payload[1] = 0;
@@ -693,19 +649,6 @@ StatusCode X265Encoder::DoOpen(HostBufferRef* p_pBuff)
 			pNals[i].payload[3] = 1;
 
 			cookie.insert(cookie.end(), pNals[i].payload, pNals[i].payload + pNals[i].sizeBytes);
-
-			{
-
-				// debug only, to DELETE
-
-				for (const uint8_t& i : cookie) {
-					logMessage.str("");
-					logMessage.clear();
-					logMessage << logMessagePrefix << " after append :: cookie val = " << ConvertUINT8ToHexStr(&i, 1);
-					g_Log(logLevelInfo, logMessage.str().c_str());
-				}
-
-			}
 
 		}
 
@@ -721,8 +664,6 @@ StatusCode X265Encoder::DoOpen(HostBufferRef* p_pBuff)
 				logMessage << " cookie size = " << cookie.size();
 				g_Log(logLevelInfo, logMessage.str().c_str());
 			}
-
-			// what is the MAGIC COOKIE format supposed to be? in the X264 ENCODER it's NAL_SPS + NAL_PPS (with the same ovewriting of the first four bytes to 0,0,0,1
 
 			p_pBuff->SetProperty(pIOPropMagicCookie, propTypeUInt8, &cookie[0], cookie.size());
 			uint32_t fourCC = 0;
@@ -789,6 +730,7 @@ StatusCode X265Encoder::DoProcess(HostBufferRef* p_pBuff)
 	x265_nal* pNals = 0;
 	uint32_t numNals = 0;
 	int bytes = 0;
+	int encoderRet = 0;
 	int64_t pts = -1;
 
 	if (!p_pBuff->IsValid()) {
@@ -798,8 +740,7 @@ StatusCode X265Encoder::DoProcess(HostBufferRef* p_pBuff)
 	if (p_pBuff == NULL || !p_pBuff->IsValid()) {
 
 		g_Log(logLevelInfo, "X265 Plugin :: DoProcess :: flushing?");
-		// flushing
-		bytes = x265_encoder_encode(m_pContext, &pNals, &numNals, 0, &outPic);
+		encoderRet = x265_encoder_encode(m_pContext, &pNals, &numNals, 0, &outPic);
 
 	} else {
 
@@ -838,37 +779,73 @@ StatusCode X265Encoder::DoProcess(HostBufferRef* p_pBuff)
 		g_Log(logLevelInfo, "X265 Plugin :: DoProcess :: x265_picture_init (inPic)");
 		x265_picture_init(m_pParam, &inPic);
 
-		// assuming it's PLANAR YUV 4:2:0 from RESOLVE (clrYUVp), we need to repackage to X265_CSP_I420
+		// UYVY > I420
 
-		uint8_t* sourceBytes = reinterpret_cast<uint8_t*>(const_cast<char*>(pBuf));
+		uint8_t* pSrc = reinterpret_cast<uint8_t*>(const_cast<char*>(pBuf));
 
 		int ySize = width * height;
 
+		std::vector<uint8_t> yPlane;
+		yPlane.reserve(ySize);
+		std::vector<uint8_t> uPlane;
+		uPlane.reserve(ySize / 4);
+		std::vector<uint8_t> vPlane;
+		vPlane.reserve(ySize / 4);
+
+		for (int h = 0; h < height; h++) {
+
+			for (int w = 0; w < width; w += 2) {
+
+				yPlane.push_back(pSrc[1]);
+				yPlane.push_back(pSrc[3]);
+
+				if ((h % 2) == 0) {
+					uPlane.push_back(pSrc[0]);
+					vPlane.push_back(pSrc[2]);
+				}
+
+				pSrc += 4;
+			}
+		}
+
 		inPic.pts = pts;
-		inPic.planes[0] = sourceBytes;
-		inPic.planes[1] = sourceBytes + ySize;
-		inPic.planes[2] = sourceBytes + ySize * 5 / 4;
+		inPic.planes[0] = yPlane.data();
+		inPic.planes[1] = uPlane.data();
+		inPic.planes[2] = vPlane.data();
 		inPic.stride[0] = width;
 		inPic.stride[1] = width / 2;
 		inPic.stride[2] = width / 2;
 
-		bytes = x265_encoder_encode(m_pContext, &pNals, &numNals, &inPic, &outPic);
+		encoderRet = x265_encoder_encode(m_pContext, &pNals, &numNals, &inPic, &outPic);
+
+		{
+
+			// debug only, to DELETE
+
+			logMessage.str("");
+			logMessage.clear();
+			logMessage << logMessagePrefix << " encoderRet = " << encoderRet << " :: bytes = " << bytes << " :: ySize = " << yPlane.size() << " :: uSize = " << uPlane.size() << " :: vSize = " << vPlane.size();
+			g_Log(logLevelInfo, logMessage.str().c_str());
+
+		}
 
 		p_pBuff->UnlockBuffer();
+
 
 		g_Log(logLevelInfo, "X265 Plugin :: DoOpen :: encoded a frame");
 
 	}
 
-	if (bytes < 0) {
+	if (encoderRet == -1) {
 		return errFail;
-	} else if (bytes == 0) {
+	} else if (encoderRet == 0) {
 		return errMoreData;
 	} else if (m_IsMultiPass && (m_PassesDone == 0)) {
 		return errNone;
 	}
 
-	// fill the out buffer and info
+	bytes = pNals[0].sizeBytes;
+
 	HostBufferRef outBuf(false);
 	if (!outBuf.IsValid() || !outBuf.Resize(bytes)) {
 		return errAlloc;
