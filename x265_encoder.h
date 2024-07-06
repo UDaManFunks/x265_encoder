@@ -57,5 +57,6 @@ private:
 	bool m_IsMultiPass;
 	uint32_t m_PassesDone;
 	StatusCode m_Error;
+	bool m_EnableDebugLogging;
 
 };

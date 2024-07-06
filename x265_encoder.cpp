@@ -430,6 +430,11 @@ X265Encoder::X265Encoder()
 	, m_IsMultiPass(false)
 	, m_PassesDone(0)
 	, m_Error(errNone)
+#ifdef ENABLEDEBUGLOG
+	, m_EnableDebugLogging(true)
+#else
+	, m_EnableDebugLogging(false)
+#endif
 {
 }
 
@@ -491,8 +496,6 @@ void X265Encoder::SetupContext(bool p_IsFinalPass)
 	std::ostringstream logMessage;
 
 	{
-		// debug only, to DELETE
-
 		logMessage << logMessagePrefix << "p_isFinalPass = " << p_IsFinalPass;
 		g_Log(logLevelInfo, logMessage.str().c_str());
 	}
@@ -569,8 +572,6 @@ StatusCode X265Encoder::DoOpen(HostBufferRef* p_pBuff)
 	std::ostringstream logMessage;
 
 	{
-		// debug only, to DELETE
-
 		logMessage << logMessagePrefix;
 		g_Log(logLevelInfo, logMessage.str().c_str());
 
@@ -603,8 +604,6 @@ StatusCode X265Encoder::DoOpen(HostBufferRef* p_pBuff)
 	p_pBuff->SetProperty(pIOPropBitsPerSample, propTypeUInt32, &vBitDepth, 1);
 
 	{
-		// debug only, to DELETE
-
 		logMessage.str("");
 		logMessage.clear();
 		logMessage << logMessagePrefix << " bitDepth = " << m_pSettings->GetBitDepth();
@@ -627,24 +626,7 @@ StatusCode X265Encoder::DoOpen(HostBufferRef* p_pBuff)
 
 	if (hdrBytes > 0) {
 
-		{
-			// debug only, to DELETE
-
-			logMessage.str("");
-			logMessage.clear();
-			logMessage << logMessagePrefix;
-			logMessage << " hdrBytes = " << hdrBytes << " ::numNals = " << numNals;
-
-			g_Log(logLevelInfo, logMessage.str().c_str());
-		}
-
 		std::vector<uint8_t> cookie;
-
-		/**
-		*
-		* the following code copies NAL payload data until it reaches SEI looks like the order is VPS -> SPS -> PPS -> (STOP @ SEI)
-		*
-		*/
 
 		for (int i = 0; i < numNals; i++) {
 
@@ -663,18 +645,6 @@ StatusCode X265Encoder::DoOpen(HostBufferRef* p_pBuff)
 		}
 
 		if (!cookie.empty()) {
-
-			{
-
-				// debug only, to DELETE
-
-				logMessage.str("");
-				logMessage.clear();
-				logMessage << logMessagePrefix;
-				logMessage << " cookie size = " << cookie.size();
-				g_Log(logLevelInfo, logMessage.str().c_str());
-			}
-
 			p_pBuff->SetProperty(pIOPropMagicCookie, propTypeUInt8, &cookie[0], cookie.size());
 			uint32_t fourCC = 0;
 			p_pBuff->SetProperty(pIOPropMagicCookieType, propTypeUInt32, &fourCC, 1);
@@ -713,8 +683,6 @@ StatusCode X265Encoder::DoProcess(HostBufferRef* p_pBuff)
 	std::ostringstream logMessage;
 
 	{
-		// debug only, to DELETE
-
 		logMessage << logMessagePrefix << " p_pBuff = " << p_pBuff << " :: m_Error = " << m_Error << " :: m_ColorModel = " << m_ColorModel;
 		g_Log(logLevelInfo, logMessage.str().c_str());
 	}
@@ -722,15 +690,6 @@ StatusCode X265Encoder::DoProcess(HostBufferRef* p_pBuff)
 	if (m_Error != errNone) {
 		return m_Error;
 	}
-
-	/*  there is no function in x265 that retrieves the number of delayed frames
-
-	const int numDelayedFrames = x265_encoder_delayed_frames(m_pContext);
-	if (((p_pBuff == NULL) || !p_pBuff->IsValid()) && (numDelayedFrames == 0)) {
-		return errMoreData;
-	}
-
-	 */
 
 	x265_picture outPic;
 	x265_picture_init(m_pParam, &outPic);
@@ -747,6 +706,14 @@ StatusCode X265Encoder::DoProcess(HostBufferRef* p_pBuff)
 		encoderRet = x265_encoder_encode(m_pContext, &pNals, &numNals, 0, &outPic);
 
 	} else {
+
+		std::chrono::steady_clock::time_point begin;
+		std::chrono::steady_clock::time_point checkpoint;
+
+		if (m_EnableDebugLogging) {
+			begin = std::chrono::steady_clock::now();
+			checkpoint = std::chrono::steady_clock::now();
+		}
 
 		char* pBuf = NULL;
 		size_t bufSize = 0;
@@ -776,6 +743,13 @@ StatusCode X265Encoder::DoProcess(HostBufferRef* p_pBuff)
 
 		x265_picture inPic;
 		x265_picture_init(m_pParam, &inPic);
+
+		if (m_EnableDebugLogging) {
+			checkpoint = std::chrono::steady_clock::now();
+			std::string sDurationMsg = "X265 Plugin :: checkpoint :: before conversion :: elapsed time :: ";
+			sDurationMsg.append(std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(checkpoint - begin).count()));
+			g_Log(logLevelInfo, sDurationMsg.c_str());
+		}
 
 		// UYVY > I420
 
@@ -814,32 +788,24 @@ StatusCode X265Encoder::DoProcess(HostBufferRef* p_pBuff)
 		inPic.stride[1] = width / 2;
 		inPic.stride[2] = width / 2;
 
+
+		if (m_EnableDebugLogging) {
+			checkpoint = std::chrono::steady_clock::now();
+			std::string sDurationMsg = "X265 Plugin :: checkpoint :: after conversion :: elapsed time :: ";
+			sDurationMsg.append(std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(checkpoint - begin).count()));
+			g_Log(logLevelInfo, sDurationMsg.c_str());
+		}
+
 		encoderRet = x265_encoder_encode(m_pContext, &pNals, &numNals, &inPic, &outPic);
 
-		{
-
-			// debug only, to DELETE
-
-			logMessage.str("");
-			logMessage.clear();
-			logMessage << logMessagePrefix << " ySize = " << yPlane.size() << " :: uSize = " << uPlane.size() << " :: vSize = " << vPlane.size();
-			g_Log(logLevelInfo, logMessage.str().c_str());
-
+		if (m_EnableDebugLogging) {
+			checkpoint = std::chrono::steady_clock::now();
+			std::string sDurationMsg = "X265 Plugin :: checkpoint :: after encoding :: elapsed time :: ";
+			sDurationMsg.append(std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(checkpoint - begin).count()));
+			g_Log(logLevelInfo, sDurationMsg.c_str());
 		}
 
 		p_pBuff->UnlockBuffer();
-
-		g_Log(logLevelInfo, "X265 Plugin :: DoProcess :: encoded a frame");
-
-	}
-
-	{
-		// debug only, to DELETE
-
-		logMessage.str("");
-		logMessage.clear();
-		logMessage << logMessagePrefix << " encoderRet = " << encoderRet;
-		g_Log(logLevelInfo, logMessage.str().c_str());
 
 	}
 
