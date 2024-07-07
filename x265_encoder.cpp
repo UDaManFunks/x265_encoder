@@ -336,7 +336,6 @@ private:
 	int32_t m_EncPreset;
 	int32_t m_Tune;
 	int32_t m_Profile;
-
 	int32_t m_NumPasses;
 	int32_t m_QualityMode;
 	int32_t m_QP;
@@ -746,6 +745,8 @@ StatusCode X265Encoder::DoProcess(HostBufferRef* p_pBuff)
 
 		uint8_t* pSrc = reinterpret_cast<uint8_t*>(const_cast<char*>(pBuf));
 
+		int iPixelBytes = 1;
+
 		int ySize = width * height;
 
 		std::vector<uint8_t> uPlane;
@@ -754,24 +755,24 @@ StatusCode X265Encoder::DoProcess(HostBufferRef* p_pBuff)
 		uint8_t* uvSrc = pSrc;
 		uvSrc += ySize;
 
-		uPlane.reserve(ySize / 4);
-		vPlane.reserve(ySize / 4);
+		uPlane.reserve((ySize / 4) * iPixelBytes);
+		vPlane.reserve((ySize / 4) * iPixelBytes);
 
-		for (int i = 0; i < (ySize / 4) * 2; i += 2) {
+		for (int i = 0; i < (ySize / 4) * 2; i += (2 * iPixelBytes)) {
 
 			uPlane.push_back(uvSrc[0]);
 			vPlane.push_back(uvSrc[1]);
 
-			uvSrc += 2;
+			uvSrc += (2 * iPixelBytes);
 		}
 
 		inPic.pts = pts;
 		inPic.planes[0] = pSrc;
 		inPic.planes[1] = uPlane.data();
 		inPic.planes[2] = vPlane.data();
-		inPic.stride[0] = width;
-		inPic.stride[1] = width / 2;
-		inPic.stride[2] = width / 2;
+		inPic.stride[0] = width * iPixelBytes;
+		inPic.stride[1] = (width / 2) * iPixelBytes;
+		inPic.stride[2] = (width / 2) * iPixelBytes;
 
 		if (m_EnableDebugLogging) {
 			checkpoint = std::chrono::steady_clock::now();
