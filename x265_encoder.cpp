@@ -378,13 +378,8 @@ StatusCode X265Encoder::s_RegisterCodecs(HostListRef* p_pList)
 	uint32_t vDirection = dirEncode;
 	codecInfo.SetProperty(pIOPropCodecDirection, propTypeUInt32, &vDirection, 1);
 
-	uint32_t vColorModel = clrUYVY;
+	uint32_t vColorModel = clrNV12;
 	codecInfo.SetProperty(pIOPropColorModel, propTypeUInt32, &vColorModel, 1);
-
-	uint8_t hSampling = 2;
-	uint8_t vSampling = 1;
-	codecInfo.SetProperty(pIOPropHSubsampling, propTypeUInt8, &hSampling, 1);
-	codecInfo.SetProperty(pIOPropVSubsampling, propTypeUInt8, &vSampling, 1);
 
 	// Optionally enable both Data Ranges, Video will be default for "Auto" thus "0" value goes first
 	std::vector<uint8_t> dataRangeVec;
@@ -477,14 +472,8 @@ StatusCode X265Encoder::DoInit(HostPropertyCollectionRef* p_pProps)
 {
 	g_Log(logLevelInfo, "X265 Plugin :: DoInit ::");
 
-	uint32_t vColorModel = clrUYVY;
+	uint32_t vColorModel = clrNV12;
 	p_pProps->SetProperty(pIOPropColorModel, propTypeUInt32, &vColorModel, 1);
-
-	uint8_t hSampling = 2;
-	uint8_t vSampling = 1;
-	p_pProps->SetProperty(pIOPropHSubsampling, propTypeUInt8, &hSampling, 1);
-	p_pProps->SetProperty(pIOPropVSubsampling, propTypeUInt8, &vSampling, 1);
-
 
 	return errNone;
 }
@@ -496,7 +485,7 @@ void X265Encoder::SetupContext(bool p_IsFinalPass)
 	std::ostringstream logMessage;
 
 	{
-		logMessage << logMessagePrefix << "p_isFinalPass = " << p_IsFinalPass;
+		logMessage << logMessagePrefix << " p_isFinalPass = " << p_IsFinalPass;
 		g_Log(logLevelInfo, logMessage.str().c_str());
 	}
 
@@ -750,43 +739,36 @@ StatusCode X265Encoder::DoProcess(HostBufferRef* p_pBuff)
 			g_Log(logLevelInfo, sDurationMsg.c_str());
 		}
 
-		// UYVY > I420
+		// NV12 > I420
 
 		uint8_t* pSrc = reinterpret_cast<uint8_t*>(const_cast<char*>(pBuf));
 
 		int ySize = width * height;
 
-		std::vector<uint8_t> yPlane;
-		yPlane.reserve(ySize);
 		std::vector<uint8_t> uPlane;
-		uPlane.reserve(ySize / 4);
 		std::vector<uint8_t> vPlane;
+
+		uint8_t* uvSrc = pSrc;
+		uvSrc += ySize;
+
+		uPlane.reserve(ySize / 4);
 		vPlane.reserve(ySize / 4);
 
-		for (int h = 0; h < height; h++) {
+		for (int i = 0; i < (ySize / 2); i += 2) {
 
-			for (int w = 0; w < width; w += 2) {
+			uPlane.push_back(uvSrc[0]);
+			vPlane.push_back(uvSrc[1]);
 
-				yPlane.push_back(pSrc[1]);
-				yPlane.push_back(pSrc[3]);
-
-				if ((h % 2) == 0) {
-					uPlane.push_back(pSrc[0]);
-					vPlane.push_back(pSrc[2]);
-				}
-
-				pSrc += 4;
-			}
+			uvSrc += 2;
 		}
 
 		inPic.pts = pts;
-		inPic.planes[0] = yPlane.data();
+		inPic.planes[0] = pSrc;
 		inPic.planes[1] = uPlane.data();
 		inPic.planes[2] = vPlane.data();
 		inPic.stride[0] = width;
 		inPic.stride[1] = width / 2;
 		inPic.stride[2] = width / 2;
-
 
 		if (m_EnableDebugLogging) {
 			checkpoint = std::chrono::steady_clock::now();
