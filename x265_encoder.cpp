@@ -712,7 +712,6 @@ StatusCode X265Encoder::DoProcess(HostBufferRef* p_pBuff)
 
 		if (m_EnableDebugLogging) {
 			begin = std::chrono::steady_clock::now();
-			checkpoint = std::chrono::steady_clock::now();
 		}
 
 		char* pBuf = NULL;
