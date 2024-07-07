@@ -2,8 +2,8 @@ OS_TYPE := $(shell uname -s)
 BASE_DIR = ./
 OBJ_DIR = ./build
 BUILD_DIR = ./bin
-X264_DIR = ../x264
-CFLAGS = -O2 -fPIC -Iinclude -Iwrapper -I$(X264_DIR)
+X265_DIR = ../x265
+CFLAGS = -O2 -fPIC -Iinclude -Iwrapper -I$(X265_DIR)/source
 
 ifeq ($(OS_TYPE), Linux)
 LDFLAGS = -shared -lpthread
@@ -11,13 +11,13 @@ else
 LDFLAGS = -dynamiclib
 endif
 
-TARGET = $(BUILD_DIR)/x264_encoder.dvcp
-LDFLAGS += -L$(X264_DIR) -lx264
+TARGET = $(BUILD_DIR)/x265_encoder.dvcp5
+LDFLAGS += -L$(X265_DIR)/ -lx265_static.lib
 
 .PHONY: all
 
-HEADERS = plugin.h x264_encoder.h
-SRCS = plugin.cpp ui_settings_controller.cpp x264_encoder.cpp 
+HEADERS = plugin.h x265_encoder.h
+SRCS = plugin.cpp ui_settings_controller.cpp x265_encoder.cpp 
 OBJS = $(SRCS:%.cpp=$(OBJ_DIR)/%.o)
 
 all: prereq make-subdirs $(HEADERS) $(SRCS) $(OBJS) $(TARGET)
