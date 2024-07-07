@@ -68,4 +68,4 @@ Note: make sure there's a white space between these defintions and ../source
 5) Copy the built plugin from C:\VideoEditingUtils\x265_plugin_build\x265_encoder\bin\x265_encoder.dvcp" and place it in the "Win64" folder (which you've created via Step 1-4)
 6) Start Davinci Resolve Studio
    
-You can export using X265 if you pick "QUICKTIME" or "MP4" as your FORMAT in Davnci Resolve, then selecting the "X265 (8-bit)" Codec option.
+You can export using X265 if you pick "QUICKTIME" or "MP4" as your FORMAT in Davinci Resolve Studio, then selecting the "X265 (8-bit)" Codec option.
