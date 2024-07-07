@@ -96,7 +96,7 @@ private:
 		m_NumPasses = 1;
 		m_QualityMode = X265_RC_CRF;
 		m_QP = 25;
-		m_BitRate = 0;
+		m_BitRate = 8000;
 	}
 
 	StatusCode RenderGeneral(HostListRef* p_pSettingsList)
@@ -267,7 +267,7 @@ private:
 
 		{
 			HostUIConfigEntryRef item("x265_bitrate");
-			item.MakeSlider("Bit Rate", "Kbps", m_BitRate, 8000, 100000, 1);
+			item.MakeSlider("Bit Rate", "Kbps", m_BitRate, 100, 100000, 8000, 1);
 			item.SetHidden((m_QualityMode != X265_RC_ABR) && (m_NumPasses < 2));
 
 			if (!item.IsSuccess() || !p_pSettingsList->Append(&item)) {
