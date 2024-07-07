@@ -754,7 +754,7 @@ StatusCode X265Encoder::DoProcess(HostBufferRef* p_pBuff)
 		uPlane.reserve(ySize / 4);
 		vPlane.reserve(ySize / 4);
 
-		for (int i = 0; i < (ySize / 2); i += 2) {
+		for (int i = 0; i < (ySize / 4) * 2; i += 2) {
 
 			uPlane.push_back(uvSrc[0]);
 			vPlane.push_back(uvSrc[1]);
