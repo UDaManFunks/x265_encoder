@@ -356,6 +356,15 @@ StatusCode X265Encoder::s_GetEncoderSettings(HostPropertyCollectionRef* p_pValue
 
 StatusCode X265Encoder::s_RegisterCodecs(HostListRef* p_pList)
 {
+
+	std::string logMessagePrefix = "X265 Plugin :: s_RegisterCodecs :: ";
+	std::ostringstream logMessage;
+
+	{
+		logMessage << logMessagePrefix << " x265_ver_str = " << x265_version_str << " :: x265_max_bit_depth = " << x265_max_bit_depth;
+		g_Log(logLevelInfo, logMessage.str().c_str());
+	}
+
 	HostPropertyCollectionRef codecInfo;
 	if (!codecInfo.IsValid()) {
 		return errAlloc;
@@ -620,7 +629,6 @@ StatusCode X265Encoder::DoOpen(HostBufferRef* p_pBuff)
 		for (int i = 0; i < numNals; i++) {
 
 			if (pNals[i].type == NAL_UNIT_PREFIX_SEI) {
-				g_Log(logLevelInfo, "X265 Plugin :: DoOpen :: continue");
 				continue;
 			}
 
@@ -670,11 +678,6 @@ StatusCode X265Encoder::DoProcess(HostBufferRef* p_pBuff)
 {
 	std::string logMessagePrefix = "X265 Plugin :: DoProcess :: ";
 	std::ostringstream logMessage;
-
-	{
-		logMessage << logMessagePrefix << " p_pBuff = " << p_pBuff << " :: m_Error = " << m_Error << " :: m_ColorModel = " << m_ColorModel;
-		g_Log(logLevelInfo, logMessage.str().c_str());
-	}
 
 	if (m_Error != errNone) {
 		return m_Error;
