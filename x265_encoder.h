@@ -1,4 +1,5 @@
 #pragma once
+#pragma once
 
 #include <memory>
 
@@ -46,17 +47,17 @@ private:
 	std::string X265Encoder::ConvertUINT8ToHexStr(const uint8_t* v, const size_t s);
 
 private:
-
 	x265_encoder* m_pContext;
 	x265_param* m_pParam;
 	int m_ColorModel;
-	std::string m_sTmpFileName;
+	std::string m_sStatFileName;
 	std::unique_ptr<UISettingsController> m_pSettings;
 	HostCodecConfigCommon m_CommonProps;
 
 	bool m_IsMultiPass;
+	uint64_t m_FramesSubmitted;
+	uint64_t m_FramesWritten;
 	uint32_t m_PassesDone;
 	StatusCode m_Error;
-	bool m_EnableDebugLogging;
 
 };
