@@ -95,7 +95,7 @@ private:
 		m_Profile = 0;
 		m_NumPasses = 1;
 		m_QualityMode = X265_RC_CRF;
-		m_QP = 25;
+		m_QP = 28;
 		m_BitRate = 8000;
 	}
 
@@ -428,57 +428,45 @@ StatusCode X265Encoder::s_RegisterCodecs(HostListRef* p_pList)
 }
 
 X265Encoder::X265Encoder()
-	: m_pContext(0)
+	: m_pContext(NULL)
+	, m_pParam(NULL)
 	, m_ColorModel(-1)
 	, m_IsMultiPass(false)
+	, m_FramesSubmitted(0)
+	, m_FramesWritten(0)
 	, m_PassesDone(0)
 	, m_Error(errNone)
-#ifdef ENABLEDEBUGLOG
-	, m_EnableDebugLogging(true)
-#else
-	, m_EnableDebugLogging(false)
-#endif
 {
 }
 
 X265Encoder::~X265Encoder()
 {
-	if (m_pContext) {
-		x265_encoder_close(m_pContext);
+	if (m_pParam != NULL) {
 		x265_param_free(m_pParam);
-		m_pContext = 0;
-		m_pParam = 0;
-	}
-}
-
-void X265Encoder::DoFlush()
-{
-
-	g_Log(logLevelInfo, "X265 Plugin :: DoFlush");
-
-	if (m_Error != errNone) {
-		return;
+		m_pParam = NULL;
 	}
 
-	StatusCode sts = DoProcess(NULL);
-	while (sts == errNone) {
-		sts = DoProcess(NULL);
+	if (m_pContext != NULL) {
+		x265_encoder_close(m_pContext);
+		m_pContext = NULL;
+		x265_cleanup();
 	}
 
-	++m_PassesDone;
+	// 2-pass encoding uses stat files and leaves them behind, remove the two files
 
-	if (!m_IsMultiPass || (m_PassesDone > 1)) {
-		return;
+	if (m_IsMultiPass && (m_PassesDone >= 2)) {
+		std::string m_sStatCUTreeFN = m_sStatFileName;
+		m_sStatCUTreeFN.append(".cutree");
+
+		std::filesystem::remove(m_sStatFileName);
+		std::filesystem::remove(m_sStatCUTreeFN);
 	}
 
-	if (m_PassesDone == 1) {
-		SetupContext(true /* isFinalPass */);
-	}
 }
 
 StatusCode X265Encoder::DoInit(HostPropertyCollectionRef* p_pProps)
 {
-	g_Log(logLevelInfo, "X265 Plugin :: DoInit ::");
+	g_Log(logLevelInfo, "X265 Plugin :: DoInit");
 
 	uint32_t vColorModel = clrNV12;
 	p_pProps->SetProperty(pIOPropColorModel, propTypeUInt32, &vColorModel, 1);
@@ -486,105 +474,23 @@ StatusCode X265Encoder::DoInit(HostPropertyCollectionRef* p_pProps)
 	return errNone;
 }
 
-void X265Encoder::SetupContext(bool p_IsFinalPass)
-{
-
-	std::string logMessagePrefix = "X265 Plugin :: SetupContext :: ";
-	std::ostringstream logMessage;
-
-	{
-		logMessage << logMessagePrefix << " p_isFinalPass = " << p_IsFinalPass;
-		g_Log(logLevelInfo, logMessage.str().c_str());
-	}
-
-	if (m_pContext) {
-		x265_encoder_close(m_pContext);
-		x265_param_free(m_pParam);
-		x265_cleanup();
-		m_pContext = 0;
-		m_pParam = 0;
-	}
-
-	m_pParam = x265_param_alloc();
-
-	const char* pProfile = m_pSettings->GetProfile();
-	m_ColorModel = X265_CSP_I420;
-
-	if (x265_param_default_preset(m_pParam, m_pSettings->GetEncPreset(), m_pSettings->GetTune()) != 0) {
-		g_Log(logLevelInfo, "X265 Plugin :: SetupContext :: setting x265 param default presets failed");
-		m_Error = errFail;
-		return;
-	}
-
-	m_pParam->internalCsp = m_ColorModel;
-	m_pParam->sourceWidth = m_CommonProps.GetWidth();
-	m_pParam->sourceHeight = m_CommonProps.GetHeight();
-	m_pParam->sourceBitDepth = m_pSettings->GetBitDepth();
-	m_pParam->fpsNum = m_CommonProps.GetFrameRateNum();
-	m_pParam->fpsDenom = m_CommonProps.GetFrameRateDen();
-	m_pParam->vui.bEnableVideoFullRangeFlag = m_CommonProps.IsFullRange();
-	m_pParam->rc.rateControlMode = m_pSettings->GetQualityMode();
-
-	if (!m_IsMultiPass && (m_pParam->rc.rateControlMode != X265_RC_ABR)) {
-		const int qp = m_pSettings->GetQP();
-
-		m_pParam->rc.qp = qp;
-		m_pParam->rc.rfConstant = std::min<int>(50, qp);
-		m_pParam->rc.rfConstantMax = std::min<int>(51, qp + 5);
-	} else if (m_pParam->rc.rateControlMode == X265_RC_ABR) {
-		m_pParam->rc.bitrate = m_pSettings->GetBitRate();
-		m_pParam->rc.vbvBufferSize = m_pSettings->GetBitRate();
-		m_pParam->rc.vbvMaxBitrate = m_pSettings->GetBitRate();
-	}
-
-	if (m_IsMultiPass) {
-		if (p_IsFinalPass && (m_PassesDone > 0)) {
-			m_pParam->rc.bStatRead = 1;
-			m_pParam->rc.bStatWrite = 0;
-		} else if (!p_IsFinalPass) {
-			m_pParam->rc.bStatRead = 0;
-			m_pParam->rc.bStatWrite = 1;
-		}
-
-		m_pParam->rc.statFileName = &m_sTmpFileName[0];
-	}
-
-	if (pProfile != NULL) {
-		if (x265_param_apply_profile(m_pParam, pProfile) != 0) {
-			m_Error = errFail;
-			return;
-		}
-	}
-
-	m_pContext = x265_encoder_open(m_pParam);
-
-	m_Error = ((m_pContext != NULL) ? errNone : errFail);
-
-}
-
 StatusCode X265Encoder::DoOpen(HostBufferRef* p_pBuff)
 {
 
-	std::string logMessagePrefix = "X265 Plugin :: DoOpen :: ";
-	std::ostringstream logMessage;
+	char* logMessagePrefix = "X265 Plugin :: DoOpen";
 
-	{
-		logMessage << logMessagePrefix;
-		g_Log(logLevelInfo, logMessage.str().c_str());
-
-	}
+	g_Log(logLevelInfo, logMessagePrefix);
 
 	assert(m_pContext == NULL);
 
 	m_CommonProps.Load(p_pBuff);
 
 	const std::string& path = m_CommonProps.GetPath();
-	if (!path.empty()) {
-		m_sTmpFileName = path;
-		m_sTmpFileName.append(".pass.log");
-	} else {
-		m_sTmpFileName = "/tmp/x265_multipass.log";
-	}
+
+	assert(!path.empty());
+
+	m_sStatFileName = path;
+	m_sStatFileName.append(".pass");
 
 	m_pSettings.reset(new UISettingsController(m_CommonProps));
 	m_pSettings->Load(p_pBuff);
@@ -600,22 +506,16 @@ StatusCode X265Encoder::DoOpen(HostBufferRef* p_pBuff)
 	vBitDepth = m_pSettings->GetBitDepth();
 	p_pBuff->SetProperty(pIOPropBitsPerSample, propTypeUInt32, &vBitDepth, 1);
 
-	{
-		logMessage.str("");
-		logMessage.clear();
-		logMessage << logMessagePrefix << " bitDepth = " << m_pSettings->GetBitDepth();
-		g_Log(logLevelInfo, logMessage.str().c_str());
-	}
+	g_Log(logLevelInfo, "%s :: bitDepth = %d", logMessagePrefix, m_pSettings->GetBitDepth());
 
 	StatusCode sts = p_pBuff->SetProperty(pIOPropMultiPass, propTypeUInt8, &isMultiPass, 1);
 	if (sts != errNone) {
 		return sts;
 	}
 
+	// this one is strictly for the header
+
 	SetupContext(true);
-	if (m_Error != errNone) {
-		return m_Error;
-	}
 
 	x265_nal* pNals;
 	uint32_t numNals = 0;
@@ -651,7 +551,7 @@ StatusCode X265Encoder::DoOpen(HostBufferRef* p_pBuff)
 	p_pBuff->SetProperty(pIOPropTemporalReordering, propTypeUInt32, &temporal, 1);
 
 	if (isMultiPass) {
-		SetupContext(false /* isFinalPass */);
+		SetupContext(false);
 		if (m_Error != errNone) {
 			return m_Error;
 		}
@@ -660,23 +560,86 @@ StatusCode X265Encoder::DoOpen(HostBufferRef* p_pBuff)
 	return errNone;
 }
 
-std::string X265Encoder::ConvertUINT8ToHexStr(const uint8_t* v, const size_t s) {
+void X265Encoder::SetupContext(bool p_IsFinalPass)
+{
 
-	std::stringstream ss;
+	char* logMessagePrefix = "X265 Plugin :: SetupContext";
 
-	ss << std::hex << std::setfill('0');
+	g_Log(logLevelInfo, "%s :: p_isFinalPass = %d", logMessagePrefix, p_IsFinalPass);
 
-	for (int i = 0; i < s; i++) {
-		ss << std::hex << std::setw(2) << static_cast<int>(v[i]);
+	if (m_pParam != NULL) {
+		x265_param_free(m_pParam);
+		m_pParam = NULL;
 	}
 
-	return ss.str();
+	if (m_pContext != NULL) {
+		x265_encoder_close(m_pContext);
+		x265_cleanup();
+		m_pContext = NULL;
+	}
+
+	m_FramesSubmitted = 0;
+	m_FramesWritten = 0;
+	m_pParam = x265_param_alloc();
+
+	const char* pProfile = m_pSettings->GetProfile();
+	m_ColorModel = X265_CSP_I420;
+
+	if (x265_param_default_preset(m_pParam, m_pSettings->GetEncPreset(), m_pSettings->GetTune()) != 0) {
+		g_Log(logLevelInfo, "%s :: setting x265 param default presets failed", logMessagePrefix);
+		m_Error = errFail;
+		return;
+	}
+
+	m_pParam->internalCsp = m_ColorModel;
+	m_pParam->sourceWidth = m_CommonProps.GetWidth();
+	m_pParam->sourceHeight = m_CommonProps.GetHeight();
+	m_pParam->sourceBitDepth = m_pSettings->GetBitDepth();
+	m_pParam->fpsNum = m_CommonProps.GetFrameRateNum();
+	m_pParam->fpsDenom = m_CommonProps.GetFrameRateDen();
+	m_pParam->vui.bEnableVideoFullRangeFlag = m_CommonProps.IsFullRange();
+	m_pParam->rc.rateControlMode = m_pSettings->GetQualityMode();
+
+	if (!m_IsMultiPass && (m_pParam->rc.rateControlMode != X265_RC_ABR)) {
+		const int qp = m_pSettings->GetQP();
+
+		m_pParam->rc.qp = qp;
+		m_pParam->rc.rfConstant = std::min<int>(50, qp);
+		m_pParam->rc.rfConstantMax = std::min<int>(51, qp + 5);
+	} else if (m_pParam->rc.rateControlMode == X265_RC_ABR) {
+		m_pParam->rc.bitrate = m_pSettings->GetBitRate();
+		m_pParam->rc.vbvBufferSize = m_pSettings->GetBitRate();
+		m_pParam->rc.vbvMaxBitrate = m_pSettings->GetBitRate();
+	}
+
+	if (m_IsMultiPass) {
+		if (p_IsFinalPass && (m_PassesDone > 0)) {
+			m_pParam->rc.bStatRead = 1;
+			m_pParam->rc.bStatWrite = 0;
+		} else if (!p_IsFinalPass) {
+			m_pParam->rc.bStatRead = 0;
+			m_pParam->rc.bStatWrite = 1;
+		}
+
+		m_pParam->rc.statFileName = &m_sStatFileName[0];
+	}
+
+	if (pProfile != NULL) {
+		if (x265_param_apply_profile(m_pParam, pProfile) != 0) {
+			m_Error = errFail;
+			return;
+		}
+	}
+
+	m_pContext = x265_encoder_open(m_pParam);
+
+	m_Error = ((m_pContext != NULL) ? errNone : errFail);
+
 }
 
 StatusCode X265Encoder::DoProcess(HostBufferRef* p_pBuff)
 {
-	std::string logMessagePrefix = "X265 Plugin :: DoProcess :: ";
-	std::ostringstream logMessage;
+	char* logMessagePrefix = "X265 Plugin :: DoProcess";
 
 	if (m_Error != errNone) {
 		return m_Error;
@@ -691,29 +654,25 @@ StatusCode X265Encoder::DoProcess(HostBufferRef* p_pBuff)
 	int encoderRet = 0;
 	int64_t pts = -1;
 
-	if (p_pBuff == NULL || !p_pBuff->IsValid()) {
+	if (m_FramesWritten >= m_FramesSubmitted && (p_pBuff == NULL || !p_pBuff->IsValid())) {
+		return errMoreData;
+	}
 
-		g_Log(logLevelInfo, "X265 Plugin :: DoProcess :: trying to flush");
+	if ((p_pBuff == NULL || !p_pBuff->IsValid())) {
+
 		encoderRet = x265_encoder_encode(m_pContext, &pNals, &numNals, 0, &outPic);
 
 	} else {
 
-		std::chrono::steady_clock::time_point begin;
-		std::chrono::steady_clock::time_point checkpoint;
-
-		if (m_EnableDebugLogging) {
-			begin = std::chrono::steady_clock::now();
-		}
-
 		char* pBuf = NULL;
 		size_t bufSize = 0;
 		if (!p_pBuff->LockBuffer(&pBuf, &bufSize)) {
-			g_Log(logLevelError, "X265 Plugin :: Failed to lock the buffer");
+			g_Log(logLevelError, "X265 Plugin :: DoProcess :: Failed to lock the buffer");
 			return errFail;
 		}
 
 		if (pBuf == NULL || bufSize == 0) {
-			g_Log(logLevelError, "X265 Plugin :: No data to encode");
+			g_Log(logLevelError, "X265 Plugin :: DoProcess :: No data to encode");
 			p_pBuff->UnlockBuffer();
 			return errUnsupported;
 		}
@@ -722,30 +681,23 @@ StatusCode X265Encoder::DoProcess(HostBufferRef* p_pBuff)
 		uint32_t height = 0;
 
 		if (!p_pBuff->GetUINT32(pIOPropWidth, width) || !p_pBuff->GetUINT32(pIOPropHeight, height)) {
-			g_Log(logLevelError, "X265 Plugin :: Width/Height not set when encoding the frame");
+			g_Log(logLevelError, "X265 Plugin :: DoProcess :: Width/Height not set when encoding the frame");
 			return errNoParam;
 		}
 
 		if (!p_pBuff->GetINT64(pIOPropPTS, pts)) {
-			g_Log(logLevelError, "X265 Plugin :: PTS not set when encoding the frame");
+			g_Log(logLevelError, "X265 Plugin :: DoProcess :: PTS not set when encoding the frame");
 			return errNoParam;
 		}
 
 		x265_picture inPic;
 		x265_picture_init(m_pParam, &inPic);
 
-		if (m_EnableDebugLogging) {
-			checkpoint = std::chrono::steady_clock::now();
-			std::string sDurationMsg = "X265 Plugin :: checkpoint :: before conversion :: elapsed time :: ";
-			sDurationMsg.append(std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(checkpoint - begin).count()));
-			g_Log(logLevelInfo, sDurationMsg.c_str());
-		}
-
 		// NV12 > I420
 
 		uint8_t* pSrc = reinterpret_cast<uint8_t*>(const_cast<char*>(pBuf));
 
-		int iPixelBytes = 1;
+		int iPixelBytes = m_pSettings->GetBitDepth() > 8 ? 2 : 1;
 
 		int ySize = width * height;
 
@@ -774,33 +726,23 @@ StatusCode X265Encoder::DoProcess(HostBufferRef* p_pBuff)
 		inPic.stride[1] = (width / 2) * iPixelBytes;
 		inPic.stride[2] = (width / 2) * iPixelBytes;
 
-		if (m_EnableDebugLogging) {
-			checkpoint = std::chrono::steady_clock::now();
-			std::string sDurationMsg = "X265 Plugin :: checkpoint :: after conversion :: elapsed time :: ";
-			sDurationMsg.append(std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(checkpoint - begin).count()));
-			g_Log(logLevelInfo, sDurationMsg.c_str());
-		}
-
 		encoderRet = x265_encoder_encode(m_pContext, &pNals, &numNals, &inPic, &outPic);
-
-		if (m_EnableDebugLogging) {
-			checkpoint = std::chrono::steady_clock::now();
-			std::string sDurationMsg = "X265 Plugin :: checkpoint :: after encoding :: elapsed time :: ";
-			sDurationMsg.append(std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(checkpoint - begin).count()));
-			g_Log(logLevelInfo, sDurationMsg.c_str());
-		}
 
 		p_pBuff->UnlockBuffer();
 
+		m_FramesSubmitted++;
+
 	}
 
-	if (encoderRet == -1) {
-		return errFail;
-	} else if (encoderRet == 0) {
+	if (encoderRet == 0) {
 		return errMoreData;
+	} else if (encoderRet < 0) {
+		return errFail;
 	} else if (m_IsMultiPass && (m_PassesDone == 0)) {
 		return errNone;
 	}
+
+	// this should only write if encodeRet == 1
 
 	bytes = pNals[0].sizeBytes;
 
@@ -819,14 +761,54 @@ StatusCode X265Encoder::DoProcess(HostBufferRef* p_pBuff)
 
 	memcpy(pOutBuf, pNals[0].payload, bytes);
 
-	int64_t ts = outPic.pts;
-	outBuf.SetProperty(pIOPropPTS, propTypeInt64, &ts, 1);
+	int64_t vPts = outPic.pts;
+	outBuf.SetProperty(pIOPropPTS, propTypeInt64, &vPts, 1);
 
-	ts = outPic.dts;
-	outBuf.SetProperty(pIOPropDTS, propTypeInt64, &ts, 1);
+	int64_t vDts = outPic.dts;
+	outBuf.SetProperty(pIOPropDTS, propTypeInt64, &vDts, 1);
 
 	uint8_t isKeyFrame = IS_X265_TYPE_I(outPic.sliceType) ? 1 : 0;
 	outBuf.SetProperty(pIOPropIsKeyFrame, propTypeUInt8, &isKeyFrame, 1);
 
+	m_FramesWritten++;
+
 	return m_pCallback->SendOutput(&outBuf);
+}
+
+void X265Encoder::DoFlush()
+{
+
+	g_Log(logLevelInfo, "X265 Plugin :: DoFlush");
+
+	if (m_Error != errNone) {
+		return;
+	}
+
+	StatusCode sts = DoProcess(NULL);
+	while (sts == errNone) {
+		sts = DoProcess(NULL);
+	}
+
+	++m_PassesDone;
+
+	if (!m_IsMultiPass || (m_PassesDone > 1)) {
+		return;
+	}
+
+	if (m_PassesDone == 1) {
+		SetupContext(true /* isFinalPass */);
+	}
+}
+
+std::string X265Encoder::ConvertUINT8ToHexStr(const uint8_t* v, const size_t s) {
+
+	std::stringstream ss;
+
+	ss << std::hex << std::setfill('0');
+
+	for (int i = 0; i < s; i++) {
+		ss << std::hex << std::setw(2) << static_cast<int>(v[i]);
+	}
+
+	return ss.str();
 }
