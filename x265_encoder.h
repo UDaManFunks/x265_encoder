@@ -44,7 +44,6 @@ protected:
 
 private:
 	void SetupContext(bool p_IsFinalPass);
-	std::string X265Encoder::ConvertUINT8ToHexStr(const uint8_t* v, const size_t s);
 
 private:
 	x265_encoder* m_pContext;
