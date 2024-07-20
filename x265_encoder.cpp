@@ -547,8 +547,10 @@ StatusCode X265Encoder::DoOpen(HostBufferRef* p_pBuff)
 		}
 	}
 
-	uint32_t temporal = 2;
-	p_pBuff->SetProperty(pIOPropTemporalReordering, propTypeUInt32, &temporal, 1);
+	uint32_t vBFrames = m_pParam->bframes;
+	p_pBuff->SetProperty(pIOPropTemporalReordering, propTypeUInt32, &vBFrames, 1);
+
+	g_Log(logLevelInfo, "%s :: bFrames = %d set based on profile", logMessagePrefix, vBFrames);
 
 	if (isMultiPass) {
 		SetupContext(false);
