@@ -374,7 +374,7 @@ StatusCode X265Encoder::s_RegisterCodecs(HostListRef* p_pList)
 	const char* pCodecName = "Auto";
 	codecInfo.SetProperty(pIOPropName, propTypeString, pCodecName, static_cast<int>(strlen(pCodecName)));
 
-	const char* pCodecGroup = "X265 (8-bit)";
+	const char* pCodecGroup = "X265";
 	codecInfo.SetProperty(pIOPropGroup, propTypeString, pCodecGroup, static_cast<int>(strlen(pCodecGroup)));
 
 	uint32_t vFourCC = 'hvc1';
@@ -758,8 +758,6 @@ StatusCode X265Encoder::DoProcess(HostBufferRef* p_pBuff)
 	if (!outBuf.LockBuffer(&pOutBuf, &outBufSize)) {
 		return errAlloc;
 	}
-
-	assert(outBufSize == bytes);
 
 	memcpy(pOutBuf, pNals[0].payload, bytes);
 
