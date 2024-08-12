@@ -92,7 +92,7 @@ Make sure the following package is installed
 
 > cd ~/x265_plugin_build
 
-> git clone https://github.com/UDaManFunks/x265_encoder
+> git clone https://github.com/videolan/x265
 
 [Compile x265]
 
