@@ -103,9 +103,13 @@ Make sure the following package is installed
 SELECT or CHANGE th following options
 
 > CMAKE_INSTALL_PREFIX = ../../../x265_pkg
+
 > ENABLE_CLI = OFF
+
 > ENABLE_SHARED = OFF
+
 > ENABLE_PIC = ON
+
 > STATIC_LINK_CRT = OFF
 
 Compile and install include / binaries
