@@ -1,6 +1,7 @@
 BASE_DIR = ../
 OBJ_DIR = ./build
-CFLAGS = -fPIC -O3 -I../include -Wall -Wno-multichar -Wno-unused-variable
+CFLAGS = -fPIC -O3 -I../include -Wall -Wno-multichar -Wno-unused-variable -std=c++20
+CPP = g++
 
 .PHONY: all
 
@@ -14,7 +15,7 @@ prereq:
 	mkdir -p $(OBJ_DIR)
 
 $(OBJ_DIR)/%.o: %.cpp
-	$(CC) -c -o $@ $< $(CFLAGS)
+	$(CPP) -c -o $@ $< $(CFLAGS)
 
 clean:
 	rm -f $(OBJS)
