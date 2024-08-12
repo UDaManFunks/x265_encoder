@@ -43,6 +43,8 @@ Note: make sure there's a white space between these defintions and ../source
 5) This will open up another terminal, type in the following commands (in the new terminal)
 6) cd /C/VideoEditingUtils/x265_plugin_build/x265/build/msys-cl
 7) "./make-Makefiles-64bit.sh"
+8) make -j 8
+9) make install
 
 [Download x265_encoder]
 
