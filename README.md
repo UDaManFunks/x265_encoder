@@ -144,4 +144,8 @@ Move the newly built binary the to the folder you created
 
 > sudo mv bin/x265_encoder.dvcp /opt/resolve/IOPlugins/x265_encoder.dvcp.bundle/Contents/Linux-x86-64/
 
+> chown root:root /opt/resolve/IOPlugins/x265_encoder.dvcp.bundle/Contents/Linux-x86-64/x265_encoder.dvcp
+
+> chmod 755 /opt/resolve/IOPlugins/x265_encoder.dvcp.bundle/Contents/Linux-x86-64/x265_encoder.dvcp
+
 Restart Davinci Resolve Studio 
