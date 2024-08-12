@@ -1,6 +1,6 @@
 BASE_DIR = ../
 OBJ_DIR = ./build
-CFLAGS = -fPIC -O3 -I../include
+CFLAGS = -fPIC -O3 -I../include -Wall -Wno-multichar -Wno-unused-variable
 
 .PHONY: all
 
