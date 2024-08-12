@@ -43,8 +43,6 @@ Note: make sure there's a white space between these defintions and ../source
 5) This will open up another terminal, type in the following commands (in the new terminal)
 6) cd /C/VideoEditingUtils/x265_plugin_build/x265/build/msys-cl
 7) "./make-Makefiles-64bit.sh"
-8) make -j 8
-9) make install
 
 [Download x265_encoder]
 
@@ -75,7 +73,6 @@ You can export using X265 if you pick "QUICKTIME" or "MP4" as your FORMAT in Dav
 ----------------- [LINUX] -----------------
 
 To compile this under LINUX, you'll need certain development tools installed.   The commands listed below were tested in UBUNTU 24.04 LTS
-
 
 
 Instructions:
