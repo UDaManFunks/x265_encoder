@@ -90,7 +90,7 @@ Make sure the following package is installed
 
 [Download x265]
 
-> cd ~/x264_plugin_build
+> cd ~/x265_plugin_build
 
 > git clone https://github.com/UDaManFunks/x265_encoder
 
