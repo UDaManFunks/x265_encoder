@@ -3,20 +3,20 @@ BASE_DIR = ./
 OBJ_DIR = ./build
 BUILD_DIR = ./bin
 WRAPPER_DIR = ./wrapper
-X265_DIR = ../x265
-CFLAGS = -O3 -fPIC -Iinclude -Iwrapper -I$(X265_DIR)/source -I$(X265_DIR)/build/linux
+X265_DIR = ../x265_pkg
+CFLAGS = -O3 -fPIC -Iinclude -Iwrapper -I$(X265_DIR)/include -I$(X265_DIR)/build/linux -Wall -Wno-multichar -Wno-unused-variable
 HEADERS = plugin.h x265_encoder.h
 SRCS = plugin.cpp x265_encoder.cpp 
 OBJS = $(SRCS:%.cpp=$(OBJ_DIR)/%.o)
 
 ifeq ($(OS_TYPE), Linux)
-LDFLAGS = -fPIC -shared -lpthread -Wl,-Bsymbolic -L$(X265_DIR)/build/linux
+LDFLAGS = -fPIC -shared -lpthread -Wl,-Bsymbolic
 else
 LDFLAGS = -dynamiclib
 endif
 
 TARGET = $(BUILD_DIR)/x265_encoder.dvcp
-LDFLAGS += -lx265
+LDFLAGS += -L$(X265_DIR)/lib -lx265
 
 .PHONY: all
 
