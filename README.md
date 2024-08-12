@@ -69,3 +69,71 @@ Note: make sure there's a white space between these defintions and ../source
 6) Start Davinci Resolve Studio
    
 You can export using X265 if you pick "QUICKTIME" or "MP4" as your FORMAT in Davinci Resolve Studio, then selecting the "X265 (8-bit)" Codec option.
+
+----------------- [LINUX] -----------------
+
+To compile this under LINUX, you'll need certain development tools installed.   The commands listed below were tested in UBUNTU 24.04 LTS
+
+
+
+Instructions:
+
+[Pre-Req]
+
+Create a directory in your HOME directory named x265_plugin_build
+
+> mkdir ~/x265_plugin_build
+
+Make sure the following package is installed 
+
+> apt-get install cmake-curses-gui
+
+[Download x265]
+
+> cd ~/x264_plugin_build
+
+> git clone https://github.com/UDaManFunks/x265_encoder
+
+[Compile x265]
+
+> cd  ~/x265_plugin_build/x265/build/linux
+
+> ./make-Makefiles.sh
+
+SELECT or CHANGE th following options
+
+> CMAKE_INSTALL_PREFIX = ../../../x265_pkg
+> ENABLE_CLI = OFF
+> ENABLE_SHARED = OFF
+> ENABLE_PIC = ON
+> STATIC_LINK_CRT = OFF
+
+Compile and install include / binaries
+
+> make -j 8
+
+> make install
+
+[Download x265_encoder]
+
+> cd ~/x265_plugin_build
+
+> git clone https://github.com/UDaManFunks/x265_encoder
+
+[Compile x265_encoder]
+
+> cd ~/x265_plugin_build/x265_encoder
+
+> make
+   
+[Packaging / Installing]
+
+Create the plugin folder structure
+
+> sudo mkdir -p /opt/resolve/IOPlugins/x265_encoder.dvcp.bundle/Contents/Linux-x86-64
+
+Move the newly built binary the to the folder you created
+
+> sudo mv bin/x265_encoder.dvcp /opt/resolve/IOPlugins/x265_encoder.dvcp.bundle/Contents/Linux-x86-64/
+
+Restart Davinci Resolve Studio 
