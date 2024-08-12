@@ -112,6 +112,8 @@ SELECT or CHANGE th following options
 
 > STATIC_LINK_CRT = OFF
 
+Note: 
+
 Compile and install include / binaries
 
 > make -j 8
