@@ -356,13 +356,9 @@ StatusCode X265Encoder::s_GetEncoderSettings(HostPropertyCollectionRef* p_pValue
 StatusCode X265Encoder::s_RegisterCodecs(HostListRef* p_pList)
 {
 
-	std::string logMessagePrefix = "X265 Plugin :: s_RegisterCodecs :: ";
-	std::ostringstream logMessage;
+	const char* logMessagePrefix = "X265 Plugin :: s_RegisterCodecs :: ";
 
-	{
-		logMessage << logMessagePrefix << " x265_ver_str = " << x265_version_str << " :: x265_max_bit_depth = " << x265_max_bit_depth;
-		g_Log(logLevelInfo, logMessage.str().c_str());
-	}
+	g_Log(logLevelInfo, "%s :: x265_ver_str = %s, x265_max_bit_depth = %d", logMessagePrefix, x265_version_str, x265_max_bit_depth);
 
 	HostPropertyCollectionRef codecInfo;
 	if (!codecInfo.IsValid()) {
@@ -468,8 +464,10 @@ StatusCode X265Encoder::DoInit(HostPropertyCollectionRef* p_pProps)
 {
 	g_Log(logLevelInfo, "X265 Plugin :: DoInit");
 
+	/*
 	uint32_t vColorModel = clrNV12;
 	p_pProps->SetProperty(pIOPropColorModel, propTypeUInt32, &vColorModel, 1);
+	*/
 
 	return errNone;
 }
