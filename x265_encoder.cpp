@@ -370,7 +370,7 @@ StatusCode X265Encoder::s_RegisterCodecs(HostListRef* p_pList)
 	const char* pCodecName = "Auto";
 	codecInfo.SetProperty(pIOPropName, propTypeString, pCodecName, static_cast<int>(strlen(pCodecName)));
 
-	const char* pCodecGroup = "X265";
+	const char* pCodecGroup = "X265 Main";
 	codecInfo.SetProperty(pIOPropGroup, propTypeString, pCodecGroup, static_cast<int>(strlen(pCodecGroup)));
 
 	uint32_t vFourCC = 'hvc1';
