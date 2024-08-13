@@ -111,9 +111,7 @@ SELECT or CHANGE th following options
 
 > STATIC_LINK_CRT = OFF
 
-> hit the letter "c" to configure
-
-Note: 
+Note: hit the letter "c" to configure
 
 Compile and install include / binaries
 
