@@ -8,7 +8,7 @@ CFLAGS = -O3 -fPIC -Iinclude -Iwrapper -I$(X265_DIR)/include -I$(X265_DIR)/build
 HEADERS = plugin.h x265_encoder.h
 SRCS = plugin.cpp x265_encoder.cpp 
 OBJS = $(SRCS:%.cpp=$(OBJ_DIR)/%.o)
-CPP = g++
+CXX = g++
 
 ifeq ($(OS_TYPE), Linux)
 LDFLAGS = -fPIC -shared -lpthread -Wl,-Bsymbolic -Wl,--no-undefined -static-libstdc++ -static-libgcc -std=c++20 -lstdc++
@@ -28,10 +28,10 @@ prereq:
 	mkdir -p $(BUILD_DIR)
 
 $(OBJ_DIR)/%.o: %.cpp
-	$(CPP) -c -o $@ $< $(CFLAGS)
+	$(CXX) -c -o $@ $< $(CFLAGS)
 
 $(TARGET):
-	$(CPP) $(WRAPPER_DIR)/build/*.o $(OBJ_DIR)/*.o $(LDFLAGS) -o $(TARGET)
+	$(CXX) $(WRAPPER_DIR)/build/*.o $(OBJ_DIR)/*.o $(LDFLAGS) -o $(TARGET)
 
 clean: clean-subdirs
 	rm -rf $(OBJ_DIR)
