@@ -23,7 +23,8 @@ Create Directory C:\VideoEditingUtils\x265_plugin_build
 6) pacman -S make
 7) pacman -S git
 8) cd /C/VideoEditingUtils/x265_plugin_build   
-90) git clone https://github.com/videolan/x265
+9) git clone https://bitbucket.org/multicoreware/x265_git.git
+10) mv x265_git x265
 
 [Compile x265]
 
@@ -91,7 +92,9 @@ Make sure the following package is installed
 
 > cd ~/x265_plugin_build
 
-> git clone https://github.com/videolan/x265
+> git clone https://bitbucket.org/multicoreware/x265_git.git
+
+> mv x265_git x265
 
 [Compile x265]
 
